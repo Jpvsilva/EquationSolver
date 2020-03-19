@@ -1,3 +1,5 @@
+import net.objecthunter.exp4j.ExpressionBuilder;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +14,7 @@ public class EquationSolver {
     public static void main(String[] args){
         equations = new HashMap<>();
         equationsCanonical = new HashMap<>();
-        String input = "a=4+b\nb=c+d\nd=4\nc=3+2\n";
+        String input = "a=b+4\nb=c+d\nd=4\nc=3+2\n";
         findIncognitos(input);
         System.out.println(equations.toString());
         canonicalFormStage1();
@@ -147,7 +149,9 @@ public class EquationSolver {
      * b=c+d <=> b-(c+d)=0 <=> b-c-d=0
      * */
     private static void canonicalFormStage2() {
-        
+        for (Map.Entry<String, String> entry : equationsCanonical.entrySet()) {
+
+        }
     }
 
     private static String getExpression(StringBuilder newValue, int sum) {
