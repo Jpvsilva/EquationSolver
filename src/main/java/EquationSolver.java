@@ -1,177 +1,174 @@
-import net.objecthunter.exp4j.ExpressionBuilder;
+import Jama.Matrix;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
 
 public class EquationSolver {
 
-    static Map<String,String> equations;
+    static Map<Character,String> equations;
+    static ArrayList<Character> variables;
+    static Map<Character,Equation> equationMap;
     static Map<String,String> equationsCanonical;
 
     public static void main(String[] args){
         equations = new HashMap<>();
         equationsCanonical = new HashMap<>();
         String input = "a=b+4\nb=c+d\nd=4\nc=3+2\n";
-        findIncognitos(input);
+        //resolve();
+
+        findVariables(input);
         System.out.println(equations.toString());
         canonicalFormStage1();
         System.out.println(equationsCanonical);
-        canonicalFormStage2();
+        //canonicalFormStage2();
     }
 
-    public static void findIncognitos(String input){
+    /**
+     * Only finds variables if equation is in format
+     * y = ax+b
+     * */
+    public static void findVariables(String input){
+        Set<Character> variablesSet = new HashSet<>();
         Character key = null;
         boolean keyIsFound = false;
         StringBuilder value = new StringBuilder();
         for(int i = 0; i<input.length();i++){
+            //Found Newline;
             if(input.charAt(i)=='\n'){
                 assert key != null;
                 String key2String = key.toString();
+                //Equation eq = new Equation(key,value.toString(), signalIndex);
                 System.out.println("Key: " + key2String + " -> " + "Value: " + value.toString());
-                equations.put(key2String,value.toString());
-                //System.out.println("Found Newline");
+                //equationMap.put(key,eq);
+                variablesSet.add(key);
+                equations.put(key,value.toString());
                 key = null;
                 value = new StringBuilder();
                 keyIsFound = false;
             }
+            //Found = signal meaning it found a variable Ex: a=
             else if(input.charAt(i)=='='){
                 key = input.charAt(i-1);
                 keyIsFound = true;
-                //System.out.println("Found Incognito: " + input.charAt(i-1));
+            //If variable was found get the rest of the string as an expression
             }else if(keyIsFound){
                 value.append(input.charAt(i));
             }
         }
+        variables = new ArrayList<>(variablesSet);
     }
 
     /**
-     * Find Numbers to sum up
+     * Find Numbers to sum up and converts equation to matrix
      * Input: 4+b+5
      * Result: b+9
      * */
     public static void canonicalFormStage1(){
-        ArrayList<Integer> numbers = new ArrayList<>();
-        ArrayList<Integer> indexDecimals = new ArrayList<>();
-        ArrayList<Integer> indexNumbers = new ArrayList<>();
-        int indexNumber=-1;
+        ArrayList<Integer> independentNumbers = new ArrayList<>();
+        double[][] matrix = new double[variables.size()][variables.size()];
+        double[] line = new double[variables.size()];
+        double[] results = new double[variables.size()];
 
-        for (Map.Entry<String, String> entry : equations.entrySet()) {
+        for (Map.Entry<Character, String> entry : equations.entrySet()) {
             String aux = entry.getValue();
             StringBuilder newValue = new StringBuilder();
             for(int i = 0; i<aux.length();i++){
-                /*If it's a number it could be 4a, 4, 4+4 */
-                if(Character.isDigit(aux.charAt(i))){
-                    /*If possible checks upfront*/
+                // filling line if a letter was found
+                // only accepting + signal
+                if(Character.isLetter(aux.charAt(i))){
+                    if(variables.contains(aux.charAt(i))){
+                        int indexToPut = variables.indexOf(aux.charAt(i));
+                        line[indexToPut] = 1;
+                        System.out.println("Filling line with 1s");
+                    }else{
+                        System.out.println("Invalid variable");
+                    }
+                }//If it's a number it could be 4a, 4, 4+4
+                else if(Character.isDigit(aux.charAt(i))){
+                    //If possible checks upfront
                     if(i+1<aux.length()){
-                        /*If it's a number it could be 4a*/
+                        //If it's a number it could be 4a
                         if(Character.isLetter(aux.charAt(i+1))){
-                            char multiplier = aux.charAt(i);
-                            char incognito = aux.charAt(i+1);
-                            String exp = Character.toString(multiplier) + incognito;
-                            System.out.println("Full expression: " + exp);
+                            int multiplier = Integer.parseInt(String.valueOf(aux.charAt(i)));
+                            if(variables.contains(aux.charAt(i))){
+                                int indexToPut = variables.indexOf(aux.charAt(i+1));
+                                line[indexToPut] = multiplier;
+                                System.out.println("Changed line index: "+ indexToPut + " to: " + multiplier);
+                            }else{
+                                System.out.println("Invalid variable");
+                            }
                         }
-                        /*If it's a number it could be 4+4 */
+                        //If it's a number it could be 4+4
                         else if(isSignal(aux.charAt(i+1))){
                             char cAux = aux.charAt(i);
                             int j = Integer.parseInt(Character.toString(cAux));
-                            indexNumber = i;
-                            indexNumbers.add(i);
-                            numbers.add(j);
+                            independentNumbers.add(j);
                             System.out.println("Found Number: "+ j);
                         }
-                        /*If it's a number it could be 44*/
-                        else if(Character.isDigit(i+1)){
-                            indexDecimals.add(i);
-                            /**
-                             * Missing this feature
-                             * */
-                            indexNumbers.add(i);
-                        }
+                        //If it's a number it could be 44
                     }else{
                         char cAux = aux.charAt(i);
                         int j = Integer.parseInt(Character.toString(cAux));
-                        numbers.add(j);
-                        System.out.println("Found Number At End Position: "+ j);
+                        independentNumbers.add(j);
+                        System.out.println("Found Number at end position: "+ aux.charAt(i));
                     }
-                }else if(Character.isLetter(aux.charAt(i))){
-                    newValue.append(aux.charAt(i));
-                    System.out.println("Found Letter: "+ aux.charAt(i));
                 }else if(isSignal(aux.charAt(i))){
-                    newValue.append(aux.charAt(i));
+                    //newValue.append(aux.charAt(i));
                     System.out.println("Found Signal: "+ aux.charAt(i));
                 }
             }
-            /*If more than one number was found*/
-            if(numbers.size()>1){
-                int sum = numbers.stream()
+            //If more than one number was found
+            if(independentNumbers.size()>=1){
+                int sum = independentNumbers.stream()
                         .mapToInt(a -> a)
                         .sum();
                 System.out.println(sum);
-                /*If expression was only numbers with plus signal then put sum */
-                if(containsOnlySignals(newValue.toString())){
-                    System.out.println(newValue);
-                    newValue = new StringBuilder();
-                    newValue.append(sum);
-                /*Else if a char is between numbers*/
-                }else{
-                    String newValueCopy = getExpression(newValue,sum);
-                    System.out.println("New Value Copy: " + newValueCopy);
-                    newValue.delete(0,newValue.length());
-                    newValue.append(newValueCopy);
-                }
-            }/*If just one number was found*/
-            else if(numbers.size() == 1){
-                /*Put on the respective order*/
-                if(indexNumber!=-1){
-                    String newValueCopy = newValue.toString().substring(0, indexNumber) +
-                            numbers.get(0) +
-                            newValue.toString().substring(indexNumber, newValue.length());
-                    System.out.println("New Value Copy: " + newValueCopy);
-                    newValue.delete(0,newValue.length());
-                    newValue.append(newValueCopy);
-                }/*Else was stored on the head meaning it was at the end*/
-                else{
-                    newValue.append(numbers.get(0));
-                }
+                results[variables.indexOf(entry.getKey())] = sum;
             }
+            line[variables.indexOf(entry.getKey())] = 1;
+            System.out.println(Arrays.toString(line));
+            matrix[variables.indexOf(entry.getKey())] = line;
+            line = new double[variables.size()];
+            independentNumbers.clear();
             System.out.println("Key: " + entry.getKey() + " -> Value: " + newValue.toString());
-            equationsCanonical.put(entry.getKey(), newValue.toString());
-            numbers = new ArrayList<>();
+            //equationsCanonical.put(String.valueOf(entry.getKey()), newValue.toString());
         }
+        printMatrix(matrix);
+        //double[][] lhsArray = {{1, -1, 0, 0}, {0, 1, -1, -1}, {0, 0, 0, 1}, {0, 0, 1, 0}};
+        System.out.println(Arrays.toString(results));
+        //resolve(lhsArray,results);
     }
 
-    /**
-     * Put equation in canonical form
-     * a=b+4 <=> a-b=4
-     * b=c+d <=> b-(c+d)=0 <=> b-c-d=0
-     * */
-    private static void canonicalFormStage2() {
-        for (Map.Entry<String, String> entry : equationsCanonical.entrySet()) {
-
-        }
-    }
-
-    private static String getExpression(StringBuilder newValue, int sum) {
-        StringBuilder newValueCopy = new StringBuilder();
-        for(int i = 0;i<newValue.length();i++){
-            if(!isSignal(newValue.charAt(i))){
-                newValueCopy.append(newValue.charAt(i));
+    private static void printMatrix(double[][] matrix) {
+        for (double[] doubles : matrix) {
+            System.out.print("[");
+            for (double aDouble : doubles) {
+                System.out.print(aDouble + " ");
             }
+            System.out.print("]\n");
         }
-        newValueCopy.append("+").append(sum);
-        return newValueCopy.toString();
     }
 
-    public static boolean containsOnlySignals(String string) {
-        Pattern p = Pattern.compile("[a-zA-Z0-9]");
-        Matcher m = p.matcher(string);
-        return !m.find();
+    private static void changeSignal(double[]line, String exp){
+
     }
 
     public static boolean isSignal(char charAt) {
         return (charAt == '+'|| charAt == '-');
+    }
+
+    public static void resolve(double[][] matrix, double[] results){
+        double[][] lhsArray = {{1, -1, 0, 0}, {0, 1, -1, -1}, {0, 0, 0, 1}, {0, 0, 1, 0}};
+        double[] rhsArray = {4, 0, 4, 5};
+        //Creating Matrix Objects with arrays
+        Matrix lhs = new Matrix(matrix);
+        Matrix rhs = new Matrix(results, variables.size());
+        //Calculate Solved Matrix
+        Matrix ans = lhs.solve(rhs);
+        //Printing Answers
+        int index = 0;
+        for(char a: variables){
+            System.out.println(a + " = " + Math.round(ans.get(index, 0)));
+            index++;
+        }
     }
 }
