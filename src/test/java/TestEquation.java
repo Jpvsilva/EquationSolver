@@ -10,6 +10,7 @@ public class TestEquation {
         assertTrue(EquationSolver.isSignal('-'));
     }
 
+    /*
     @Test
     public void testCheckOnlySignals() {
         assertFalse(EquationSolver.containsOnlySignals("b"));
@@ -20,7 +21,7 @@ public class TestEquation {
         assertTrue(EquationSolver.containsOnlySignals("+"));
         assertTrue(EquationSolver.containsOnlySignals("++"));
         assertTrue(EquationSolver.containsOnlySignals("--"));
-    }
+    }*/
 
     /*
     @Test
